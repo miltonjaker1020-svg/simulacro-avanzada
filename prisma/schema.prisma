@@ -1,0 +1,82 @@
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AuctionStatus {
+  ACTIVA
+  CERRADA
+  DESIERTA
+  CANCELADA
+}
+
+model User {
+  id               String    @id @default(uuid())
+  email            String    @unique
+  passwordHash     String
+  name             String
+  alias            String
+  role             Role      @default(USER)
+  refreshTokenHash String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  auctions         Auction[] @relation("SellerAuctions")
+  bids             Bid[]     @relation("UserBids")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  auctions    Auction[]
+}
+
+model Auction {
+  id           String        @id @default(uuid())
+  title        String
+  description  String
+  imageUrl     String?
+  initialPrice Float
+  minIncrement Float
+  closingDate  DateTime
+  status       AuctionStatus @default(ACTIVA)
+  cancelReason String?
+
+  sellerId     String
+  seller       User          @relation("SellerAuctions", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  categoryId   String
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  bids         Bid[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Bid {
+  id        String   @id @default(uuid())
+  amount    Float
+  createdAt DateTime @default(now())
+
+  auctionId String
+  auction   Auction  @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  bidderId  String
+  bidder    User     @relation("UserBids", fields: [bidderId], references: [id], onDelete: Cascade)
+}
