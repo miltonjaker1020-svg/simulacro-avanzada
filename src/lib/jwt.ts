@@ -1,50 +1,42 @@
-import { SignJWT, jwtVerify } from 'jose';
-import { JWTPayload } from '../types/payloads';
-import { env } from 'process';
+import { SignJWT, jwtVerify } from "jose";
 
-const JWT_ACCESS_SECRET = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET || 'super_secret_access_key_bidhub_2026_dev' );
+const ACCESS_SECRET = new TextEncoder().encode(
+  process.env.JWT_ACCESS_SECRET || "super_secret_access_key_bidhub_2026_dev"
+);
+const REFRESH_SECRET = new TextEncoder().encode(
+  process.env.JWT_REFRESH_SECRET || "super_secret_refresh_key_bidhub_2026_dev"
+);
 
-const JWT_REFRESH_SECRET = new TextEncoder().encode(process.env.JWT_REFRESH_SECRET || 'super_secret_access_key_bidhub_2026_dev');
-
-async function signAccessToken(payload: JWTPayload): Promise<string> {
-  const jwt = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+export async function signAccessToken(payload: { userId: string; email: string; role: string }) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(env.ACCESS_TOKEN_EXPIRES_IN || "15m")
-    .sign(JWT_ACCESS_SECRET);
-  return jwt;
+    .setExpirationTime(process.env.ACCESS_TOKEN_EXPIRES_IN || "15m")
+    .sign(ACCESS_SECRET);
 }
 
-
-async function signRefreshToken(payload: JWTPayload): Promise<string> {
-const jwt = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+export async function signRefreshToken(payload: { userId: string }) {
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(env.REFRESH_TOKEN_EXPIRES_IN || "7d")
-    .sign(JWT_REFRESH_SECRET);
-    return jwt;
-    }
-
-
-
-async function verifyAccessToken(token: string): Promise<JWTPayload> {
-    try {
-    const { payload } = await jwtVerify(token, JWT_ACCESS_SECRET);
-    return payload as unknown as JWTPayload;
-}
- catch  {
-    throw new Error('Invalid access token');
-}
+    .setExpirationTime(process.env.REFRESH_TOKEN_EXPIRES_IN || "7d")
+    .sign(REFRESH_SECRET);
 }
 
-async function verifyRefreshToken(token: string): Promise<JWTPayload> {
-    try {
-        const { payload } = await jwtVerify(token, JWT_REFRESH_SECRET);
-        return payload as unknown as JWTPayload;
-    } catch  {
-        throw new Error('Invalid refresh token');
-    }
+export async function verifyAccessToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, ACCESS_SECRET);
+    return payload as { userId: string; email: string; role: string };
+  } catch {
+    return null;
+  }
 }
 
-
-export { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken };
+export async function verifyRefreshToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, REFRESH_SECRET);
+    return payload as { userId: string };
+  } catch {
+    return null;
+  }
+}
